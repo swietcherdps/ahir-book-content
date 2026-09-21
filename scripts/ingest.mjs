@@ -17,7 +17,12 @@ const PUBLISHER = 'Hayrat Neşriyat / Risale Online'
 const args = new Set(process.argv.slice(2))
 const bookArgIndex = process.argv.indexOf('--book')
 const selectedSlug = bookArgIndex >= 0 ? process.argv[bookArgIndex + 1] : null
+const writingArgIndex = process.argv.indexOf('--writing')
+const selectedWriting = writingArgIndex >= 0 ? process.argv[writingArgIndex + 1] : (args.has('--all') ? 'both' : 'latince')
 const ingestAll = args.has('--all')
+if (!['latince', 'osmanlica', 'both'].includes(selectedWriting)) {
+  throw new Error('--writing latince|osmanlica|both olmalıdır')
+}
 if (!ingestAll && !selectedSlug) {
   throw new Error('Kullanım: node scripts/ingest.mjs --book sozler | --all')
 }
@@ -42,14 +47,17 @@ async function fetchWithRetry(url, responseType = 'json') {
 
 const window = new JSDOM('').window
 const DOMPurify = createDOMPurify(window)
-const allowedTags = ['div', 'p', 'span', 'strong', 'em', 'b', 'i', 'sup', 'sub', 'br', 'blockquote']
+const allowedTags = ['div', 'p', 'span', 'strong', 'em', 'b', 'i', 'sup', 'sub', 'br', 'blockquote', 'section', 'aside']
 const allowedAttributes = [
   'class', 'dir', 'lang', 'role', 'tabindex',
   'data-paragraf-id', 'data-eser-id', 'data-sayfa', 'data-sira',
   'data-kelime-tur', 'data-hasiye-no', 'data-lugat-id',
   'data-lugat-latince-kelime', 'data-lugat-latince-mana',
+  'data-lugat-osmanlica-kelime', 'data-lugat-osmanlica-mana',
   'data-mehaz-id', 'data-mehaz-metin', 'data-mehaz-latince-meal',
-  'data-mehaz-latince-kaynak', 'data-latince', 'data-latince-ust-bilgi'
+  'data-mehaz-latince-kaynak', 'data-mehaz-osmanlica-meal',
+  'data-mehaz-osmanlica-kaynak', 'data-mehaz-harekesiz',
+  'data-latince', 'data-latince-ust-bilgi'
 ]
 
 function sanitizeHtml(html) {
@@ -62,7 +70,7 @@ function sanitizeHtml(html) {
   })
   const container = window.document.createElement('div')
   container.innerHTML = clean
-  container.querySelectorAll('[data-lugat-latince-mana], [data-mehaz-id], [data-latince], [data-latince-ust-bilgi]').forEach(element => {
+  container.querySelectorAll('[data-lugat-id], [data-lugat-latince-mana], [data-lugat-osmanlica-mana], [data-mehaz-id], [data-latince], [data-latince-ust-bilgi]').forEach(element => {
     element.setAttribute('tabindex', '0')
     element.setAttribute('role', 'button')
     element.setAttribute('aria-label', `${element.textContent?.trim() || 'Kelime'} açıklamasını göster`)
@@ -76,12 +84,16 @@ function plainTextFromHtml(html) {
   return (container.textContent || '').replace(/\s+/g, ' ').trim()
 }
 
-async function ingestBook(book) {
-  console.log(`${book.latince}: ${book.sayfa_sayisi} sayfa alınıyor...`)
+async function ingestBook(book, writingType) {
+  const isOttoman = writingType === 'osmanlica'
+  const sourceKey = isOttoman ? `risale-online:osmanlica:${book.id}` : `risale-online:${book.id}`
+  const catalogSlug = isOttoman ? `${book.slug}-osmanlica` : book.slug
+  const htmlField = isOttoman ? 'osmanlica_html' : 'latince_html'
+  console.log(`${book.latince} (${writingType}): ${book.sayfa_sayisi} sayfa alınıyor...`)
   const paragraphsById = new Map()
   for (let first = 1; first <= book.sayfa_sayisi; first += BATCH_SIZE) {
     const last = Math.min(book.sayfa_sayisi, first + BATCH_SIZE - 1)
-    const url = `${API_BASE}/paragraf?eserid=${book.id}&ilksayfa=${first}&sonsayfa=${last}&yazi=latince`
+    const url = `${API_BASE}/paragraf?eserid=${book.id}&ilksayfa=${first}&sonsayfa=${last}&yazi=${writingType}`
     const paragraphs = await fetchWithRetry(url)
     if (!Array.isArray(paragraphs)) throw new Error(`${book.slug}: paragraf yanıtı dizi değil`)
     for (const paragraph of paragraphs) {
@@ -105,7 +117,7 @@ async function ingestBook(book) {
     const paragraphs = grouped.get(pageNumber) || []
     // Sanitize once per page. This keeps paragraph order/metadata intact and avoids
     // constructing thousands of redundant DOM trees on full-catalog builds.
-    const html = sanitizeHtml(paragraphs.map(paragraph => paragraph.latince_html || '').join(''))
+    const html = sanitizeHtml(paragraphs.map(paragraph => paragraph[htmlField] || '').join(''))
     glossaryCount += (html.match(/data-lugat-latince-mana=/g) || []).length
     citationCount += (html.match(/data-mehaz-id=/g) || []).length
     pages.push({
@@ -122,45 +134,46 @@ async function ingestBook(book) {
   const toc = await fetchWithRetry(`${API_BASE}/fihrist?eserid=${book.id}`)
   if (!Array.isArray(toc) || toc.length === 0) throw new Error(`${book.slug}: fihrist bulunamadı`)
 
-  const revisionSeed = JSON.stringify({ sourceId: book.id, pageCount: book.sayfa_sayisi, toc, pages })
+  const revisionSeed = JSON.stringify({ sourceId: book.id, writingType, pageCount: book.sayfa_sayisi, toc, pages })
   const version = `1-${sha256(revisionSeed).slice(0, 12)}`
   const pkg = {
     schemaVersion: 1,
     source: {
       name: 'Risale Online',
-      url: `https://risale.online/oku/${book.slug}?tip=latince`,
+      url: `https://risale.online/oku/${book.slug}?tip=${writingType}`,
       publisher: PUBLISHER
     },
     book: {
-      sourceKey: `risale-online:${book.id}`,
+      sourceKey,
       sourceId: book.id,
       slug: book.slug,
       title: book.latince,
       author: AUTHOR,
       pageCount: book.sayfa_sayisi,
-      version
+      version,
+      writingType
     },
     toc,
     pages
   }
   const canonical = Buffer.from(JSON.stringify(pkg))
   const compressed = gzipSync(canonical, { level: 9, mtime: 0 })
-  const relativePackagePath = `books/${book.slug}/${version}.json.gz`
+  const relativePackagePath = `books/${writingType}/${book.slug}/${version}.json.gz`
   const packagePath = resolve(OUTPUT_DIR, relativePackagePath)
   await mkdir(dirname(packagePath), { recursive: true })
   await writeFile(packagePath, compressed)
 
   const cover = await fetchWithRetry(`${COVER_BASE}/${String(book.id).padStart(2, '0')}.webp`, 'arrayBuffer')
-  const relativeCoverPath = `covers/${book.slug}.webp`
+  const relativeCoverPath = `covers/${writingType}/${book.slug}.webp`
   const coverPath = resolve(OUTPUT_DIR, relativeCoverPath)
   await mkdir(dirname(coverPath), { recursive: true })
   await writeFile(coverPath, cover)
 
   console.log(`  ${paragraphsById.size} paragraf, ${glossaryCount} lügat, ${citationCount} kaynak, ${(compressed.length / 1048576).toFixed(2)} MiB`)
   return {
-    sourceKey: `risale-online:${book.id}`,
+    sourceKey,
     sourceId: book.id,
-    slug: book.slug,
+    slug: catalogSlug,
     title: book.latince,
     author: AUTHOR,
     pageCount: book.sayfa_sayisi,
@@ -169,7 +182,8 @@ async function ingestBook(book) {
     sha256: sha256(compressed),
     packageUrl: `./${relativePackagePath}`,
     coverUrl: `./${relativeCoverPath}`,
-    sourceUrl: `https://risale.online/oku/${book.slug}?tip=latince`
+    sourceUrl: `https://risale.online/oku/${book.slug}?tip=${writingType}`,
+    writingType
   }
 }
 
@@ -182,11 +196,14 @@ const selectedBooks = books
 if (selectedBooks.length === 0) throw new Error('İstenen kitap bulunamadı')
 
 const catalogBooks = []
-for (const book of selectedBooks) catalogBooks.push(await ingestBook(book))
+const writingTypes = selectedWriting === 'both' ? ['latince', 'osmanlica'] : [selectedWriting]
+for (const writingType of writingTypes) {
+  for (const book of selectedBooks) catalogBooks.push(await ingestBook(book, writingType))
+}
 const catalog = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
-  source: 'https://risale.online/oku?tip=latince',
+  source: 'https://risale.online/oku',
   books: catalogBooks
 }
 await writeFile(resolve(OUTPUT_DIR, 'catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`)

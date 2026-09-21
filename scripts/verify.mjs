@@ -32,6 +32,9 @@ for (const book of catalog.books) {
   if (pkg.book.sourceKey !== book.sourceKey || pkg.book.version !== book.version) {
     throw new Error(`${book.slug}: paket metadata uyuşmuyor`)
   }
+  if (!['latince', 'osmanlica'].includes(book.writingType) || pkg.book.writingType !== book.writingType) {
+    throw new Error(`${book.slug}: yazı türü metadata uyuşmuyor`)
+  }
   if (pkg.pages.length !== book.pageCount) throw new Error(`${book.slug}: eksik sayfa`)
   const pageNumbers = new Set(pkg.pages.map(page => page.pageNumber))
   if (pageNumbers.size !== book.pageCount) throw new Error(`${book.slug}: tekrarlı sayfa`)
@@ -40,6 +43,9 @@ for (const book of catalog.books) {
   }
   if (!pkg.pages.some(page => page.html.includes('data-lugat-latince-mana'))) {
     throw new Error(`${book.slug}: lügat alanı yok`)
+  }
+  if (book.writingType === 'osmanlica' && !pkg.pages.some(page => page.html.includes('OsmanlicaStandart'))) {
+    throw new Error(`${book.slug}: Osmanlıca sınıfları korunmamış`)
   }
   if (pkg.pages.some(page => /<script|\son[a-z]+\s*=|<iframe/i.test(page.html))) {
     throw new Error(`${book.slug}: güvensiz HTML bulundu`)

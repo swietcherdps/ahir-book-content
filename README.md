@@ -18,7 +18,7 @@ VITE_CONTENT_CATALOG_URL=http://localhost:4174/catalog.json npm run dev
 
 Başka bir terminalde `dist` klasörünü CORS destekli statik bir sunucuyla `4174` portunda servis edin.
 
-Tüm Latin metni bulunan eserleri üretip 22 kitaplık kataloğu doğrulamak için:
+Latin ve Osmanlıca koleksiyonları üretip 44 kitaplık kataloğu doğrulamak için:
 
 ```bash
 npm run ingest:all

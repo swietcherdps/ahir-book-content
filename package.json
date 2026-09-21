@@ -3,10 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ingest:sozler": "node scripts/ingest.mjs --book sozler",
-    "ingest:all": "node scripts/ingest.mjs --all",
+    "ingest:sozler": "node scripts/ingest.mjs --book sozler --writing both",
+    "ingest:latince": "node scripts/ingest.mjs --all --writing latince",
+    "ingest:osmanlica": "node scripts/ingest.mjs --all --writing osmanlica",
+    "ingest:all": "node scripts/ingest.mjs --all --writing both",
     "verify": "node scripts/verify.mjs",
-    "verify:all": "node scripts/verify.mjs --expected 22",
+    "verify:all": "node scripts/verify.mjs --expected 44",
     "publish:check": "node scripts/check-publish-permission.mjs"
   },
   "dependencies": {
