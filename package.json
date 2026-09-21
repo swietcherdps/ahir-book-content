@@ -1,0 +1,16 @@
+{
+  "name": "ahir-book-content",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest:sozler": "node scripts/ingest.mjs --book sozler",
+    "ingest:all": "node scripts/ingest.mjs --all",
+    "verify": "node scripts/verify.mjs",
+    "verify:all": "node scripts/verify.mjs --expected 22",
+    "publish:check": "node scripts/check-publish-permission.mjs"
+  },
+  "dependencies": {
+    "dompurify": "^3.3.3",
+    "jsdom": "^27.3.0"
+  }
+}

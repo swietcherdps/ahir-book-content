@@ -1,0 +1,46 @@
+name: Publish content catalog
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Require written redistribution permission
+        env:
+          CONTENT_LICENSE_TEXT: ${{ secrets.CONTENT_LICENSE_TEXT }}
+        run: |
+          if [ -z "$CONTENT_LICENSE_TEXT" ]; then
+            echo "CONTENT_LICENSE_TEXT secret is required" >&2
+            exit 1
+          fi
+          printf '%s\n' "$CONTENT_LICENSE_TEXT" > "$RUNNER_TEMP/content-license.txt"
+          CONTENT_LICENSE_FILE="$RUNNER_TEMP/content-license.txt" npm run publish:check
+      - run: npm ci
+      - run: npm run ingest:all
+      - run: npm run verify:all
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
