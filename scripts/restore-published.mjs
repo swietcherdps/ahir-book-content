@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 
@@ -27,6 +27,12 @@ const catalog = JSON.parse(bytes.toString())
 if (catalog.schemaVersion !== 1 || catalog.books.length !== 44) throw new Error('Mevcut 44 Risale kitabı korunamadı')
 for (const book of catalog.books) {
   await save(book.packageUrl, book.sha256)
-  if (book.coverUrl) await save(book.coverUrl)
+  if (book.coverUrl) {
+    const key = book.slug.replace(/-osmanlica$/, '').replace(/emirdag-lahikasi-\d+/, 'emirdag-lahikasi')
+    const cover = await readFile(resolve('artwork/risale', `${key}.webp`))
+    const file = resolve(root, book.coverUrl.replace(/^\.\//, ''))
+    await mkdir(dirname(file), { recursive: true })
+    await writeFile(file, cover)
+  }
 }
 console.log(`Mevcut ${catalog.books.length} kitap ve kapakları hash doğrulamasıyla korundu.`)

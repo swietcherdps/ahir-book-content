@@ -45,8 +45,9 @@ async function download() {
     try { bytes = await readFile(`${output}/books/${filename}`) } catch { bytes = await fetchBytes(book.sourceUrl) }
     if (!bytes.subarray(0, 1024).includes(Buffer.from('%PDF-'))) throw new Error(`${book.title}: Geçersiz PDF`)
     await writeFile(`${output}/books/${filename}`, bytes)
-    const coverName = filename.replace(/\.pdf$/i, '.jpg')
-    const cover = await fetchBytes(book.coverSourceUrl)
+    const coverName = filename.replace(/\.pdf$/i, '.webp')
+    const cover = await readFile(resolve('artwork/dini', coverName))
+    if (cover.toString('ascii', 0, 4) !== 'RIFF' || cover.toString('ascii', 8, 12) !== 'WEBP') throw new Error('Geçersiz kapak: ' + coverName)
     await writeFile(`${output}/covers/${coverName}`, cover)
     const author = filename.startsWith('imam_Gazali') || /ihyau/.test(filename) ? 'İmam Gazali' : filename.startsWith('DurrulMensur') ? 'İmam Süyûtî' : filename.startsWith('Mevlana') ? 'Mevlânâ Celâleddîn-i Rûmî' : filename.startsWith('ibrahim_Hakki') ? 'İbrahim Hakkı Erzurumî' : filename.startsWith('ismail_Hakki') ? 'İsmail Hakkı Bursevî' : filename.startsWith('Futuhul') ? 'Abdülkâdir Geylânî' : filename.startsWith('Mektubat') ? 'İmam Rabbânî' : null
     Object.assign(book, { sourceKey: `ahmet-tunalilar:${filename}`, author, filename, format: 'pdf', packageUrl: `books/${filename}`, coverUrl: `covers/${coverName}`, downloadSize: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), existingIhya: /ihyau/.test(filename) })

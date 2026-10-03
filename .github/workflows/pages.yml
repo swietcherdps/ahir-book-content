@@ -49,6 +49,7 @@ jobs:
       - run: npm run restore:published
         if: inputs.collection == 'dini'
       - run: npm run ingest:dini
+      - run: npm run verify:dini
       - run: npm run verify:all
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
