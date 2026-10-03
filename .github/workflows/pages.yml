@@ -32,6 +32,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Complete the source site's omitted intermediate chain
+        run: |
+          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt -untrusted certs/root-yr-by-x1.pem certs/int-yr2.pem
+          cat /etc/ssl/certs/ca-certificates.crt certs/int-yr2.pem certs/root-yr-by-x1.pem > "$RUNNER_TEMP/source-ca-bundle.pem"
+          echo "CURL_CA_BUNDLE=$RUNNER_TEMP/source-ca-bundle.pem" >> "$GITHUB_ENV"
       - name: Require written redistribution permission
         if: inputs.collection != 'dini'
         env:
