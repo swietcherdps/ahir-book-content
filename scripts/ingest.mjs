@@ -1,12 +1,11 @@
 import { createHash } from 'node:crypto'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile, readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import createDOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
 
 const API_BASE = 'https://risale.online/risale-api'
-const COVER_BASE = 'https://static-risale.hayrat.dev/mobil-uygulama/eserler'
 const OUTPUT_DIR = resolve('dist')
 const BATCH_SIZE = 25
 const REQUEST_DELAY_MS = 200
@@ -163,7 +162,7 @@ async function ingestBook(book, writingType) {
   await mkdir(dirname(packagePath), { recursive: true })
   await writeFile(packagePath, compressed)
 
-  const cover = await fetchWithRetry(`${COVER_BASE}/${String(book.id).padStart(2, '0')}.webp`, 'arrayBuffer')
+  const cover = await readFile(resolve('artwork/risale', `${book.slug.replace(/emirdag-lahikasi-\d+/, 'emirdag-lahikasi')}.webp`))
   const relativeCoverPath = `covers/${writingType}/${book.slug}.webp`
   const coverPath = resolve(OUTPUT_DIR, relativeCoverPath)
   await mkdir(dirname(coverPath), { recursive: true })

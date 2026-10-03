@@ -9,7 +9,10 @@
     "ingest:all": "node scripts/ingest.mjs --all --writing both",
     "verify": "node scripts/verify.mjs",
     "verify:all": "node scripts/verify.mjs --expected 44",
-    "publish:check": "node scripts/check-publish-permission.mjs"
+    "publish:check": "node scripts/check-publish-permission.mjs",
+    "ingest:dini": "node scripts/ingest-dini.mjs",
+    "restore:published": "node scripts/restore-published.mjs",
+    "verify:dini": "node scripts/verify-dini.mjs"
   },
   "dependencies": {
     "dompurify": "^3.3.3",

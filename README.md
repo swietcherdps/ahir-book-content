@@ -30,3 +30,11 @@ npm run verify:all
 Bu araç içerik hak sahibinin izni olmadan yayın yapmaz. `npm run publish:check` çalıştırılmadan önce `CONTENT_LICENSE_FILE` değişkeni, yazılı yeniden dağıtım izninin yerel dosya yoluna ayarlanmalıdır. İzin belgesi depoya eklenmemelidir.
 
 GitHub Pages iş akışı elle başlatılır ve depo sırrı olarak `CONTENT_LICENSE_TEXT` bulunmadığı sürece içerik oluşturma/yayınlama adımına geçmez.
+
+## Ahmet Tunalılar dini kitapları
+
+`npm run ingest:dini`, kaynak sayfadaki 30 PDF'yi (Ed-Dürrü'l-Mensûr'un 15 cildi dahil) ve kapaklarını `dist/dini/` altında indirir. PDF başlıklarını, dosya boyutlarını ve SHA-256 değerlerini doğrular; uygulama kataloğu yalnız metadata içerir. İhyâ mevcut uygulama kaydında tutulur, 29 yeni kitap/cilt eklenir.
+
+Kaynak: https://www.ahmettunalilar.com/dini-e-kitaplar/
+
+Sayfanın kendi yayınladığı izin metni katalogda ve kaynak sayfanın kopyasında saklanır. Bu işlem Risale izin koşullarını değiştirmez. Yayın iş akışında `collection=dini`, mevcut 44 Risale paketini SHA-256 ile doğrulayarak korur ve yalnız yeni dini kitapları ekler. `all` mevcut izin kontrolünden sonra iki koleksiyonu üretir.
